@@ -1,0 +1,95 @@
+
+version: '3.8'
+services:
+  couchbase:
+    image: couchbase:community
+    container_name: couchbase
+    ports:
+      - "8091:8091"
+      - "8092:8092"
+      - "8093:8093"
+      - "8094:8094"
+      - "11210:11210"
+    environment:
+      COUCHBASE_ADMINISTRATOR_USERNAME: Administrator
+      COUCHBASE_ADMINISTRATOR_PASSWORD: Alireza1379!
+    volumes:
+      - couchbase_data:/opt/couchbase/var
+    networks:
+      - appnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8091/pools || exit 1"]
+      interval: 5s
+      retries: 20
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_PORT: 5672
+    networks:
+      - appnet
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat_app
+    command: ["sh","/usr/src/app/docker-entrypoint.sh","node","index.js"]
+    environment:
+      COUCHBASE_HOST: couchbase
+      COUCHBASE_ADMINISTRATOR_USERNAME: Administrator
+      COUCHBASE_ADMINISTRATOR_PASSWORD: Alireza1379!
+      APP_CB_BUCKET: myApp
+      APP_CB_SCOPE: chat
+      APP_CB_COLLECTIONS: users,messages,rooms
+      APP_CB_USER: appuser
+      APP_CB_PASS: apppass
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_PORT: 5672
+      NODE_ENV: production
+    depends_on:
+      - couchbase
+      - rabbitmq
+    ports:
+      - "3000:3000"
+    networks:
+      - appnet
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat_worker
+    command: ["sh","/usr/src/app/docker-entrypoint.sh","node","worker.js"]
+    environment:
+      COUCHBASE_HOST: couchbase
+      COUCHBASE_ADMINISTRATOR_USERNAME: Administrator
+      COUCHBASE_ADMINISTRATOR_PASSWORD: Alireza1379!
+      APP_CB_BUCKET: myApp
+      APP_CB_SCOPE: chat
+      APP_CB_COLLECTIONS: users,messages,rooms
+      APP_CB_USER: appuser
+      APP_CB_PASS: apppass
+      RABBITMQ_URL: amqp://rabbitmq
+      NODE_ENV: production
+    depends_on:
+      - couchbase
+      - rabbitmq
+    networks:
+      - appnet
+
+volumes:
+  couchbase_data:
+
+networks:
+  appnet:

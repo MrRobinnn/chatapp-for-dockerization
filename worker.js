@@ -14,6 +14,20 @@ const QUEUE = 'db_tasks';
 // const RABBIT_URL = 'amqp://guest:guest@localhost:5672'
 const RABBIT_URL =`amqp://${process.env.RABBITMQ_USER}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`;
 
+const serializeError = (err) => {
+    if (err instanceof Error) {
+        const serialized = {
+            message: err.message,
+            name: err.name,
+        };
+        if (err.statusCode) {
+            serialized.statusCode = err.statusCode;
+        }
+        return serialized;
+    }
+    return err;
+};
+
 async function startWorker(){
     try{
         const fastify = Fastify();
@@ -105,15 +119,16 @@ async function startWorker(){
                 }
             }catch(err){
                 console.error(err);
+                const errorPayload = serializeError(err);
                 result = {
                     success:false,
-                    error: err?.message || 'unexpected error',
-                    ...(err?.statusCode ? {statusCode: err.statusCode} : {})
+                    error: errorPayload,
+                    ...(errorPayload?.statusCode ? {statusCode: errorPayload.statusCode} : {})
                 };
             }
             if(msg.properties.replyTo && msg.properties.correlationId){
                 channel.sendToQueue(
-                    msg.properties.replyTo, 
+                    msg.properties.replyTo,
                     Buffer.from(JSON.stringify(result)),
                     {correlationId:msg.properties.correlationId}
                 )

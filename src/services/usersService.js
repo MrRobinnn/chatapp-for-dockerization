@@ -1,5 +1,12 @@
 const couchbase = require('couchbase');
 
+const ensureHttpErrors = (fastify) => {
+    if (!fastify.httpErrors) {
+        throw new Error('fastify httpErrors decorator is not registered');
+    }
+    return fastify.httpErrors;
+};
+
 const _getUserDoc = async function(fastify, userId){
     return await fastify.couchbase.usersCollection.get(userId);
 }
@@ -10,7 +17,8 @@ const loadUser = async function(fastify, userId){
         return result.content;
     }catch(err){
         if(err instanceof couchbase.DocumentNotFoundError){
-            throw fastify.httpErrors.notFound('user not found');
+            const httpErrors = ensureHttpErrors(fastify);
+            throw httpErrors.notFound('user not found');
         }
         else throw err;
     }
@@ -33,10 +41,12 @@ const addToGroups =async function(fastify, userId, groupId) {
     return user.groups;
   } catch (err) {
     if (err instanceof couchbase.DocumentNotFoundError) {
-      throw fastify.httpErrors.notFound('user not found');
+      const httpErrors = ensureHttpErrors(fastify);
+      throw httpErrors.notFound('user not found');
     }
     console.error(err);
-    throw fastify.httpErrors.internalServerError('failed to update user groups');
+    const httpErrors = ensureHttpErrors(fastify);
+    throw httpErrors.internalServerError('failed to update user groups');
   }
 }
 const makeFriendRequest = async function(fastify, userId, friendUsername){
@@ -52,9 +62,11 @@ const makeFriendRequest = async function(fastify, userId, friendUsername){
     ])
   }catch(err){
     if(err instanceof couchbase.DocumentNotFoundError){
-      throw fastify.httpErrors.notFound('no user found');
+      const httpErrors = ensureHttpErrors(fastify);
+      throw httpErrors.notFound('no user found');
     }
-    throw fastify.httpErrors.internalServerError(err.message);
+    const httpErrors = ensureHttpErrors(fastify);
+    throw httpErrors.internalServerError(err.message);
   }
 }
 const addFriend = async function(fastify, userId, friendId) {
@@ -75,4 +87,4 @@ const addFriend = async function(fastify, userId, friendId) {
     throw new Error(err.message);
   }
 }
-module.exports = {loadUser, addToGroups, makeFriendRequest, addFriend}
+module.exports = {loadUser, addToGroups, makeFriendRequest, addFriend};

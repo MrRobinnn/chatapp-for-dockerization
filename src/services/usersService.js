@@ -1,5 +1,4 @@
 const couchbase = require('couchbase');
-const { default: fastify } = require('fastify');
 
 const _getUserDoc = async function(fastify, userId){
     return await fastify.couchbase.usersCollection.get(userId);
@@ -34,13 +33,13 @@ const addToGroups =async function(fastify, userId, groupId) {
     return user.groups;
   } catch (err) {
     if (err instanceof couchbase.DocumentNotFoundError) {
-      throw new Error('User not found');
+      throw fastify.httpErrors.notFound('user not found');
     }
     console.error(err);
-    throw new Error('Failed to update user groups');
+    throw fastify.httpErrors.internalServerError('failed to update user groups');
   }
 }
-const makeFriendRequest = async function(fastify, userId, friendUsername){  
+const makeFriendRequest = async function(fastify, userId, friendUsername){
   const friendId = `user::${friendUsername}`;
   try{
     await Promise.all([
@@ -53,9 +52,9 @@ const makeFriendRequest = async function(fastify, userId, friendUsername){
     ])
   }catch(err){
     if(err instanceof couchbase.DocumentNotFoundError){
-      return fastify.httpErrors.notFound('no user found');
+      throw fastify.httpErrors.notFound('no user found');
     }
-    throw new Error(err.message);
+    throw fastify.httpErrors.internalServerError(err.message);
   }
 }
 const addFriend = async function(fastify, userId, friendId) {

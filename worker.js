@@ -17,6 +17,7 @@ const RABBIT_URL =`amqp://${process.env.RABBITMQ_USER}:${process.env.RABBITMQ_PA
 async function startWorker(){
     try{
         const fastify = Fastify();
+        fastify.register(require('@fastify/sensible'));
         fastify.register(couchbasePlugin);
         await fastify.ready();
         console.log('couchbase connected inside worker');
@@ -103,8 +104,12 @@ async function startWorker(){
                     }
                 }
             }catch(err){
-                console.log(err.message);
-                result = {success:false, error:err.message};
+                console.error(err);
+                result = {
+                    success:false,
+                    error: err?.message || 'unexpected error',
+                    ...(err?.statusCode ? {statusCode: err.statusCode} : {})
+                };
             }
             if(msg.properties.replyTo && msg.properties.correlationId){
                 channel.sendToQueue(

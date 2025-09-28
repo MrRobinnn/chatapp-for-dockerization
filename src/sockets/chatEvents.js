@@ -243,7 +243,7 @@ const registerChatEvents = function(fastify, io, socket, onlineUsersMap){
             })
             io.to(room).emit('recieveMessage', savedMessage, latestActionPlain);
         }catch(err){
-            fastify.error.log(err);
+            fastify.log.error(err);
             socket.emit('error', 'internal server error');
         }
     });
@@ -252,7 +252,7 @@ const registerChatEvents = function(fastify, io, socket, onlineUsersMap){
             const loadedMessages = await loadRoomMessage(fastify, roomId);
             socket.emit('displayMessages', loadedMessages, roomId);
         }catch(err){
-            fastify.error.log(err);
+            fastify.log.error(err);
             socket.emit('error', 'internal server error');
         }
     })

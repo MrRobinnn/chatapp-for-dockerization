@@ -248,11 +248,20 @@ const registerChatEvents = function(fastify, io, socket, onlineUsersMap){
         }
     });
     socket.on('loadRoomMessages', async(roomId)=>{
+        const sanitizedRoomId = typeof roomId === 'string' ? roomId : '';
+        if(!sanitizedRoomId){
+            socket.emit('error', 'invalid room id');
+            return;
+        }
         try{
-            const loadedMessages = await loadRoomMessage(fastify, roomId);
-            socket.emit('displayMessages', loadedMessages, roomId);
+            const loadedMessages = await loadRoomMessage(fastify, sanitizedRoomId);
+            socket.emit('displayMessages', loadedMessages, sanitizedRoomId);
         }catch(err){
             fastify.log.error(err);
+            if(err && err.statusCode && err.statusCode >= 400 && err.statusCode < 500){
+                socket.emit('error', err.message || 'invalid room id');
+                return;
+            }
             socket.emit('error', 'internal server error');
         }
     })

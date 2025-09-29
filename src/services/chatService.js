@@ -31,15 +31,27 @@ const saveMessage = async function(fastify, messageDoc, id){
     }
 };
 const loadRoomMessage = async function(fastify, room, limit = 50){
+    if(typeof room !== 'string' || room.length === 0){
+        throw fastify.httpErrors.badRequest('invalid room identifier');
+    }
+
+    const limitNumber = typeof limit === 'number' ? limit : Number.parseInt(limit, 10);
+    const sanitizedLimit = Number.isInteger(limitNumber) && limitNumber > 0 ? limitNumber : 50;
+
     const query = `
         SELECT META().id, user, message, room, timestamp, seenBy, type
         FROM \`${fastify.couchbase.bucket.name}\`.\`${fastify.couchbase.scope.name}\`.\`${fastify.couchbase.messagesCollection.name}\`
-        WHERE room = "${room}" 
+        WHERE room = $room
         ORDER BY timestamp ASC
-        LIMIT ${limit};
+        LIMIT $limit;
     `
     try{
-        const result = await fastify.couchbase.cluster.query(query);
+        const result = await fastify.couchbase.cluster.query(query, {
+            parameters: {
+                room,
+                limit: sanitizedLimit
+            }
+        });
         const decryptedRows = result.rows.map(row=>{
             try{
                 console.log(row);
